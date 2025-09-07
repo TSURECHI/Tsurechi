@@ -1,0 +1,14 @@
+{
+"tasks": {
+"fmt": "deno fmt",
+"lint": "deno lint",
+"test": "deno test -A"
+},
+"lint": {
+"rules": {
+"exclude": [
+"**/_shared/**"
+]
+}
+}
+}
