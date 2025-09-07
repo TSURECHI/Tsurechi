@@ -1,0 +1,98 @@
+name: CI
+
+
+on:
+push:
+branches: [main]
+pull_request:
+branches: [main]
+
+
+jobs:
+supabase-sql-validate:
+name: Supabase schema & RLS validate
+runs-on: ubuntu-latest
+services:
+postgres:
+image: postgres:15
+env:
+POSTGRES_USER: postgres
+POSTGRES_PASSWORD: postgres
+POSTGRES_DB: tsurechi
+ports: ["5432:5432"]
+options: >-
+--health-cmd="pg_isready -U postgres" --health-interval=10s --health-timeout=5s --health-retries=5
+steps:
+- uses: actions/checkout@v4
+- name: Wait for Postgres
+run: |
+for i in {1..10}; do
+pg_isready -h localhost -p 5432 -U postgres && break
+sleep 3
+done
+- name: Install psql
+run: sudo apt-get update && sudo apt-get install -y postgresql-client
+- name: Apply schema.sql
+if: ${{ hashFiles('supabase/schema.sql') != '' }}
+run: psql postgresql://postgres:postgres@localhost:5432/tsurechi -f supabase/schema.sql
+- name: Apply rls.sql
+if: ${{ hashFiles('supabase/rls.sql') != '' }}
+run: psql postgresql://postgres:postgres@localhost:5432/tsurechi -f supabase/rls.sql
+- name: Apply seed.sql (optional)
+if: ${{ hashFiles('supabase/seed.sql') != '' }}
+run: psql postgresql://postgres:postgres@localhost:5432/tsurechi -f supabase/seed.sql
+
+
+deno-functions:
+name: Lint & test Edge Functions (Deno)
+runs-on: ubuntu-latest
+steps:
+- uses: actions/checkout@v4
+- uses: denoland/setup-deno@v1
+with:
+deno-version: v1.x
+- name: Format check
+if: ${{ hashFiles('supabase/functions/**') != '' }}
+run: deno fmt --check supabase/functions
+- name: Lint
+if: ${{ hashFiles('supabase/functions/**') != '' }}
+run: deno lint supabase/functions
+- name: Test
+if: ${{ hashFiles('supabase/functions/**') != '' }}
+run: deno test -A supabase/functions
+
+
+swift-lint:
+name: SwiftLint
+runs-on: macos-14
+steps:
+- uses: actions/checkout@v4
+- name: Install SwiftLint
+run: brew install swiftlint
+- name: Run SwiftLint
+if: ${{ hashFiles('.swiftlint.yml') != '' }}
+run: swiftlint --strict
+
+
+ios-build:
+name: iOS build (if project exists)
+runs-on: macos-14
+steps:
+- uses: actions/checkout@v4
+- name: Detect project
+id: detect
+run: |
+if ls *.xcodeproj >/dev/null 2>&1; then echo "found=true" >> $GITHUB_OUTPUT; else echo "found=false" >> $GITHUB_OUTPUT; fi
+- name: Select Xcode
+if: steps.detect.outputs.found == 'true'
+run: sudo xcode-select -s /Applications/Xcode_15.4.app
+- name: Build
+if: steps.detect.outputs.found == 'true'
+run: |
+SCHEME=$(xcodebuild -list -json | plutil -extract project.schemes.0 raw -)
+xcodebuild -scheme "$SCHEME" -destination 'platform=iOS Simulator,name=iPhone 15' -configuration Debug build | xcpretty
+- name: Unit tests
+if: steps.detect.outputs.found == 'true'
+run: |
+SCHEME=$(xcodebuild -list -json | plutil -extract project.schemes.0 raw -)
+xcodebuild -scheme "$SCHEME" -destination 'platform=iOS Simulator,name=iPhone 15' -configuration Debug test | xcpretty
