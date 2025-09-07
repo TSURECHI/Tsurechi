@@ -1,0 +1,27 @@
+name: Tsurechi
+options:
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  Tsurechi:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Sources
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.tsurechi.app
+      SWIFT_VERSION: 5.9
+      GENERATE_INFOPLIST_FILE: YES
+    scheme:
+      isShared: true
+    info:
+      path: Tsurechi/Info.plist
+      properties:
+        CFBundleDisplayName: Tsurechi
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: YES
+        NSLocationWhenInUseUsageDescription: "現在地周辺の釣り場や投稿の表示に使用します。"
+        NSCameraUsageDescription: "釣果写真の撮影に使用します。"
+        NSPhotoLibraryAddUsageDescription: "釣果写真の保存に使用します。"
