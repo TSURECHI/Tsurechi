@@ -1,0 +1,26 @@
+name: Summarize PR
+on:
+pull_request:
+types: [opened, synchronize]
+
+
+jobs:
+summarize:
+runs-on: ubuntu-latest
+steps:
+- uses: actions/checkout@v4
+- name: Generate summary
+run: |
+echo '### Auto Summary' > pr_summary.md
+echo '' >> pr_summary.md
+echo '<details><summary>Changed files</summary>' >> pr_summary.md
+git fetch origin ${{ github.base_ref }}
+git diff --name-status origin/${{ github.base_ref }}...HEAD >> pr_summary.md
+echo '</details>' >> pr_summary.md
+echo '' >> pr_summary.md
+echo '#### TODO candidates' >> pr_summary.md
+git diff origin/${{ github.base_ref }}...HEAD | grep -E "TODO|FIXME|HACK" -n || true >> pr_summary.md
+- name: Comment on PR
+uses: thollander/actions-comment-pull-request@v2
+with:
+filePath: pr_summary.md
